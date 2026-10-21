@@ -1,0 +1,795 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Test Sistemas Distribuidos</title>
+<style>
+.gate-overlay{
+  position:fixed;
+  inset:0;
+  background:var(--bg);
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  z-index:1000;
+  padding:20px;
+}
+.gate-box{
+  background:var(--surface);
+  border:1px solid var(--border);
+  border-radius:var(--radius);
+  padding:28px 24px;
+  max-width:360px;
+  width:100%;
+  box-shadow:var(--shadow);
+  text-align:center;
+}
+.gate-box h2{margin:0 0 6px 0; font-size:1.1rem;}
+.gate-box p{color:var(--text-dim); font-size:0.85rem; margin:0 0 16px 0;}
+.gate-box input[type=password]{
+  width:100%;
+  padding:10px 12px;
+  border-radius:10px;
+  border:1px solid var(--border);
+  background:var(--surface-2);
+  color:var(--text);
+  font-size:0.95rem;
+  margin-bottom:10px;
+}
+.gate-box button{
+  width:100%;
+  padding:10px 12px;
+  border-radius:10px;
+  border:none;
+  background:var(--accent);
+  color:var(--accent-text);
+  font-weight:700;
+  font-size:0.9rem;
+  cursor:pointer;
+}
+.gate-error{color:var(--wrong); font-size:0.82rem; margin-top:10px; display:none;}
+#app{display:none;}
+:root{
+  --bg:#f5f6f8;
+  --surface:#ffffff;
+  --surface-2:#eef0f3;
+  --text:#1b1e24;
+  --text-dim:#5b6270;
+  --border:#dde1e7;
+  --accent:#5b5bd6;
+  --accent-text:#ffffff;
+  --correct:#1a8754;
+  --correct-bg:#e6f4ec;
+  --wrong:#c0392b;
+  --wrong-bg:#fbe9e7;
+  --radius:14px;
+  --shadow:0 1px 3px rgba(20,22,30,0.08), 0 1px 2px rgba(20,22,30,0.06);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#15161a;
+    --surface:#1e2025;
+    --surface-2:#26282e;
+    --text:#eceef2;
+    --text-dim:#9a9fab;
+    --border:#34363d;
+    --accent:#8a8af0;
+    --accent-text:#14141a;
+    --correct:#4bbf84;
+    --correct-bg:#163227;
+    --wrong:#e5756a;
+    --wrong-bg:#33201e;
+    --shadow:0 1px 3px rgba(0,0,0,0.4);
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#15161a;
+  --surface:#1e2025;
+  --surface-2:#26282e;
+  --text:#eceef2;
+  --text-dim:#9a9fab;
+  --border:#34363d;
+  --accent:#8a8af0;
+  --accent-text:#14141a;
+  --correct:#4bbf84;
+  --correct-bg:#163227;
+  --wrong:#e5756a;
+  --wrong-bg:#33201e;
+  --shadow:0 1px 3px rgba(0,0,0,0.4);
+}
+*{box-sizing:border-box;}
+body{
+  margin:0;
+  background:var(--bg);
+  color:var(--text);
+  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  -webkit-font-smoothing:antialiased;
+  padding-bottom:env(safe-area-inset-bottom, 0);
+}
+.wrap{
+  max-width:720px;
+  margin:0 auto;
+  padding:20px max(16px, env(safe-area-inset-left)) 48px max(16px, env(safe-area-inset-right));
+}
+header.top{
+  position:sticky;
+  top:0;
+  z-index:10;
+  background:var(--bg);
+  padding-top:14px;
+  padding-bottom:10px;
+  border-bottom:1px solid var(--border);
+}
+h1{
+  font-size:1.3rem;
+  margin:0 0 2px 0;
+  letter-spacing:-0.01em;
+}
+.subtitle{
+  color:var(--text-dim);
+  font-size:0.85rem;
+  margin:0 0 14px 0;
+}
+nav.tabs{
+  display:flex;
+  gap:6px;
+  overflow-x:auto;
+  scrollbar-width:none;
+  padding-bottom:2px;
+}
+nav.tabs::-webkit-scrollbar{display:none;}
+.tab-btn{
+  flex:0 0 auto;
+  border:1px solid var(--border);
+  background:var(--surface);
+  color:var(--text);
+  border-radius:999px;
+  padding:8px 14px;
+  font-size:0.82rem;
+  font-weight:600;
+  cursor:pointer;
+  white-space:nowrap;
+  transition:background .15s,color .15s,border-color .15s;
+}
+.tab-btn.active{
+  background:var(--accent);
+  color:var(--accent-text);
+  border-color:var(--accent);
+}
+.tab-btn .pct{
+  opacity:0.75;
+  font-weight:500;
+  margin-left:4px;
+}
+
+main{padding-top:18px;}
+
+.panel{display:none;}
+.panel.active{display:block;}
+
+.stats-bar{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+  background:var(--surface);
+  border:1px solid var(--border);
+  border-radius:var(--radius);
+  padding:12px 16px;
+  margin-bottom:18px;
+  box-shadow:var(--shadow);
+}
+.stats-bar .label{font-size:0.8rem;color:var(--text-dim);}
+.stats-bar .score{font-size:1.05rem;font-weight:700;}
+.progress-track{
+  flex:1;
+  height:7px;
+  background:var(--surface-2);
+  border-radius:999px;
+  overflow:hidden;
+  margin:0 12px;
+}
+.progress-fill{
+  height:100%;
+  background:var(--accent);
+  border-radius:999px;
+  width:0%;
+  transition:width .25s ease;
+}
+
+.q-card{
+  background:var(--surface);
+  border:1px solid var(--border);
+  border-radius:var(--radius);
+  padding:16px 16px 14px 16px;
+  margin-bottom:14px;
+  box-shadow:var(--shadow);
+}
+.q-num{
+  font-size:0.72rem;
+  font-weight:700;
+  color:var(--accent);
+  text-transform:uppercase;
+  letter-spacing:0.04em;
+  margin-bottom:6px;
+}
+.q-text{
+  font-size:1rem;
+  font-weight:600;
+  line-height:1.4;
+  margin-bottom:12px;
+}
+.options{
+  display:flex;
+  flex-direction:column;
+  gap:8px;
+}
+.opt-btn{
+  text-align:left;
+  border:1px solid var(--border);
+  background:var(--surface-2);
+  color:var(--text);
+  border-radius:10px;
+  padding:10px 12px;
+  font-size:0.92rem;
+  line-height:1.35;
+  cursor:pointer;
+  transition:border-color .15s, background .15s;
+}
+.opt-btn:hover:not(:disabled){
+  border-color:var(--accent);
+}
+.opt-btn:disabled{cursor:default;}
+.opt-btn.correct{
+  background:var(--correct-bg);
+  border-color:var(--correct);
+  color:var(--correct);
+  font-weight:600;
+}
+.opt-btn.wrong{
+  background:var(--wrong-bg);
+  border-color:var(--wrong);
+  color:var(--wrong);
+  font-weight:600;
+}
+.opt-btn.dim{opacity:0.55;}
+
+.feedback{
+  margin-top:12px;
+  padding:11px 13px;
+  border-radius:10px;
+  font-size:0.88rem;
+  line-height:1.45;
+  display:none;
+}
+.feedback.show{display:block;}
+.feedback.ok{background:var(--correct-bg);color:var(--correct);}
+.feedback.ko{background:var(--wrong-bg);color:var(--wrong);}
+.feedback b{display:block;margin-bottom:3px;font-size:0.82rem;letter-spacing:0.01em;}
+.feedback .exp{color:var(--text);font-weight:400;}
+
+.summary-card{
+  background:var(--surface);
+  border:1px solid var(--border);
+  border-radius:var(--radius);
+  padding:20px;
+  margin-bottom:14px;
+  box-shadow:var(--shadow);
+}
+.summary-card h2{margin:0 0 10px 0;font-size:1.05rem;}
+.summary-row{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  padding:10px 0;
+  border-bottom:1px solid var(--border);
+  font-size:0.92rem;
+}
+.summary-row:last-child{border-bottom:none;}
+.summary-row .big{font-weight:700;}
+.reset-btn{
+  display:inline-block;
+  margin-top:14px;
+  border:1px solid var(--border);
+  background:var(--surface-2);
+  color:var(--text);
+  border-radius:10px;
+  padding:9px 16px;
+  font-size:0.85rem;
+  font-weight:600;
+  cursor:pointer;
+}
+.badge{
+  display:inline-block;
+  font-size:0.72rem;
+  font-weight:700;
+  padding:3px 9px;
+  border-radius:999px;
+  background:var(--surface-2);
+  color:var(--text-dim);
+  margin-left:6px;
+}
+</style>
+</head>
+<body>
+
+<div id="gate" class="gate-overlay">
+  <div class="gate-box">
+    <h2>Acceso restringido</h2>
+    <p>Introduce la contraseña para entrar al test.</p>
+    <input type="password" id="gate-pass" placeholder="Contraseña" autocomplete="off">
+    <button id="gate-btn">Entrar</button>
+    <div class="gate-error" id="gate-error">Contraseña incorrecta, inténtalo de nuevo.</div>
+  </div>
+</div>
+
+<div id="app">
+<div class="wrap">
+  <header class="top">
+    <h1>Test Sistemas Distribuidos</h1>
+    <p class="subtitle">Preguntas tipo examen · feedback inmediato tras cada respuesta</p>
+    <nav class="tabs" id="tabs"></nav>
+  </header>
+  <main id="main"></main>
+</div>
+</div>
+
+<script>
+(function(){
+  var PASSWORD_HASH = "f1b9c6a8cab94276ef65d488c5e87c23a0a6c96e82f70b2d947737f205b3e62d";
+
+  function bufToHex(buf){
+    return Array.prototype.map.call(new Uint8Array(buf), function(b){
+      return b.toString(16).padStart(2,"0");
+    }).join("");
+  }
+
+  function sha256(str){
+    var enc = new TextEncoder().encode(str);
+    return crypto.subtle.digest("SHA-256", enc).then(bufToHex);
+  }
+
+  function unlock(){
+    document.getElementById("gate").style.display = "none";
+    document.getElementById("app").style.display = "block";
+    try{ sessionStorage.setItem("sd_quiz_unlocked", "1"); }catch(e){}
+  }
+
+  function tryUnlock(){
+    var val = document.getElementById("gate-pass").value.trim().toLowerCase();
+    sha256(val).then(function(hash){
+      if(hash === PASSWORD_HASH){
+        unlock();
+      } else {
+        document.getElementById("gate-error").style.display = "block";
+      }
+    });
+  }
+
+  document.getElementById("gate-btn").addEventListener("click", tryUnlock);
+  document.getElementById("gate-pass").addEventListener("keydown", function(e){
+    if(e.key === "Enter") tryUnlock();
+  });
+
+  try{
+    if(sessionStorage.getItem("sd_quiz_unlocked") === "1"){ unlock(); }
+  }catch(e){}
+})();
+</script>
+
+<script>
+(function(){
+
+const TOPICS = [
+  {id:"t0", name:"Tema 0 · C y optimización"},
+  {id:"t1", name:"Tema 1 · Arquitecturas"},
+  {id:"t2", name:"Tema 2 · OpenMP"},
+  {id:"t2b", name:"Tema 2 · Reparto de tareas"},
+  {id:"t3", name:"Tema 2 · Sincronización"},
+  {id:"resumen", name:"Resumen"}
+];
+
+const QUESTIONS = {
+t0:[
+{q:"¿Qué función se usa para escribir datos formateados dentro de una cadena de caracteres (en memoria) en lugar de en pantalla?",
+ opts:["printf()","sprintf()","fprintf(stdout, ...)","scanf()"], correct:1,
+ exp:"sprintf() funciona como printf pero el destino es un buffer (char array) en memoria, muy útil para construir strings con formato."},
+{q:"¿Qué función permite leer datos con formato desde una cadena de caracteres, de forma análoga a scanf pero sobre un string ya existente?",
+ opts:["fscanf()","sscanf()","gets()","strtol()"], correct:1,
+ exp:"sscanf() interpreta el contenido de un string según un formato, igual que scanf lee de stdin."},
+{q:"¿Qué modo de apertura de fichero en C añade datos al final del archivo sin borrar lo que ya hay?",
+ opts:["\"w\"","\"r+\"","\"a\"","\"wb\""], correct:2,
+ exp:"\"a\" (append) escribe siempre al final del fichero, conservando el contenido previo. \"w\" en cambio trunca el fichero a 0 bytes."},
+{q:"¿Qué modo se debe usar para abrir un fichero en modo binario para escritura?",
+ opts:["\"w\"","\"wb\"","\"rb+\"","\"a+\""], correct:1,
+ exp:"La 'b' indica modo binario; \"wb\" crea/trunca el fichero y permite escribir bytes sin las conversiones de texto (saltos de línea, etc.)."},
+{q:"¿Cuál de estos flags de GCC activa el conjunto más agresivo de optimizaciones, incluso a costa de no cumplir estrictamente el estándar IEEE de coma flotante?",
+ opts:["-O2","-O3","-Ofast","-Os"], correct:2,
+ exp:"-Ofast = -O3 + optimizaciones adicionales (como -ffast-math) que pueden alterar ligeramente la precisión/semántica de las operaciones en coma flotante."},
+{q:"¿Qué hace el flag -march=native al compilar?",
+ opts:["Optimiza para cualquier arquitectura genérica, garantizando portabilidad","Genera código usando el juego de instrucciones específico del procesador de la máquina donde se compila (puede no ser portable)","Activa solo el autovectorizador","Reduce el tamaño del binario eliminando símbolos"], correct:1,
+ exp:"-march=native le dice al compilador que use todas las extensiones (SSE/AVX/AVX2/AVX512...) del procesador local, a cambio de perder portabilidad a otras máquinas."},
+{q:"¿Para qué sirve la palabra clave 'restrict' al declarar un puntero en C?",
+ opts:["Hacer que el puntero sea constante","Indicar al compilador que ese puntero es la única vía de acceso a esos datos (no hay aliasing), permitiendo optimizaciones más agresivas como la vectorización","Reservar memoria estática automáticamente","Prohibir que el puntero sea NULL"], correct:1,
+ exp:"restrict promete al compilador que no hay 'aliasing' (otro puntero apuntando al mismo bloque), lo que desbloquea optimizaciones que de otro modo serían inseguras."},
+{q:"¿Qué flag de GCC permite obtener informes sobre qué bucles se vectorizaron automáticamente (y cuáles no, y por qué)?",
+ opts:["-Wall","-fopt-info-vec","-pg","-g"], correct:1,
+ exp:"-fopt-info-vec (y variantes como -fopt-info-vec-missed) imprime diagnósticos del autovectorizador de GCC."},
+{q:"En BLAS, ¿a qué nivel corresponde la operación GEMM (multiplicación matriz-matriz)?",
+ opts:["Nivel 1","Nivel 2","Nivel 3","No forma parte de BLAS"], correct:2,
+ exp:"BLAS Nivel 3 agrupa las operaciones matriz-matriz (como GEMM), las más costosas computacionalmente y las que más se benefician de cache blocking."},
+{q:"¿Qué nivel de BLAS corresponde a operaciones vector-vector, como el producto escalar (dot product)?",
+ opts:["Nivel 1","Nivel 2","Nivel 3","Nivel 0"], correct:0,
+ exp:"BLAS Nivel 1: operaciones vector-vector. Nivel 2: matriz-vector. Nivel 3: matriz-matriz."},
+{q:"Ordenando de menor a mayor latencia de acceso, ¿cuál es el orden correcto de la jerarquía de memoria?",
+ opts:["RAM < L3 < L2 < L1","L1 < L2 < L3 < RAM","L2 < L1 < L3 < RAM","L1 < L3 < L2 < RAM"], correct:1,
+ exp:"L1 (~4 ciclos) es la más rápida y pequeña; luego L2 (~12 ciclos), L3 (~40 ciclos) y por último la RAM (~200 ciclos), la más lenta y grande."},
+{q:"La técnica de 'Cache Blocking' (Loop Tiling) aplicada a la multiplicación de matrices busca:",
+ opts:["Paralelizar automáticamente el bucle con OpenMP sin cambios","Dividir las matrices en bloques que quepan en una caché (p. ej. L2) para maximizar la reutilización de datos y minimizar fallos de caché","Convertir el algoritmo iterativo en recursivo obligatoriamente","Eliminar por completo la necesidad de usar BLAS"], correct:1,
+ exp:"Al trocear las matrices en bloques pequeños (tiles) que caben en caché, se reutilizan los datos ya cargados antes de que sean desalojados, reduciendo accesos a memoria principal. Regla aproximada: 3×B² ≤ tamaño de la caché."},
+{q:"Dado que en C las matrices se almacenan en orden 'fila-mayor' (row-major), ¿qué patrón de recorrido en el bucle interno es más eficiente en caché?",
+ opts:["Recorrer por columnas en el bucle interno","Recorrer por filas en el bucle interno, accediendo a posiciones contiguas en memoria","Es indiferente, el compilador siempre lo arregla","Depende exclusivamente del tamaño de la matriz, nunca del orden de acceso"], correct:1,
+ exp:"En row-major, los elementos de una misma fila son contiguos en memoria. Recorrer por filas en el bucle más interno aprovecha la localidad espacial y reduce fallos de caché."}
+],
+t1:[
+{q:"Según la taxonomía de Flynn, un procesador que ejecuta UNA única instrucción sobre MÚLTIPLES datos simultáneamente (p. ej. una GPU o unidades SIMD) se clasifica como:",
+ opts:["SISD","SIMD","MISD","MIMD"], correct:1,
+ exp:"SIMD = Single Instruction, Multiple Data. Es el modelo típico de vectorización y de muchas unidades de GPU."},
+{q:"Un cluster de ordenadores independientes conectados por red, cada uno ejecutando sus propias instrucciones sobre sus propios datos, se corresponde en la taxonomía de Flynn con:",
+ opts:["SIMD","MIMD","SISD","MISD"], correct:1,
+ exp:"MIMD = Multiple Instruction, Multiple Data: múltiples procesadores autónomos ejecutando distintos programas sobre distintos datos, como en un cluster MPI."},
+{q:"En una arquitectura NUMA (Non-Uniform Memory Access), el tiempo de acceso a memoria:",
+ opts:["Es idéntico para todos los procesadores, sin importar la ubicación de los datos","Depende de la proximidad del procesador al banco de memoria físico que contiene el dato (no es uniforme)","Es siempre instantáneo porque no existe memoria compartida","Solo aplica a sistemas con una única CPU"], correct:1,
+ exp:"En NUMA cada procesador tiene memoria 'local' de acceso rápido y puede acceder a memoria de otros nodos, pero con mayor latencia."},
+{q:"UMA (Uniform Memory Access) se caracteriza por:",
+ opts:["Memoria físicamente distribuida sin acceso compartido","Todos los procesadores acceden a una memoria compartida con el mismo tiempo de acceso aproximado","Ser un modelo exclusivo de clusters MPI","Requerir obligatoriamente paso de mensajes entre nodos"], correct:1,
+ exp:"UMA típico de sistemas SMP pequeños: todos los cores comparten el bus de memoria con latencia similar, a diferencia de NUMA."},
+{q:"Un 'Cluster of Workstations' (COW) se diferencia de un MPP (Massively Parallel Processor) principalmente en que:",
+ opts:["El COW usa interconexión especializada de muy alto rendimiento, igual que el MPP","El COW está formado por ordenadores de propósito general conectados por red convencional (p. ej. Ethernet), mientras que el MPP usa interconexión especializada diseñada específicamente para ese sistema","No existe ninguna diferencia real entre ambos","Un COW no puede ejecutar aplicaciones MPI"], correct:1,
+ exp:"MPP integra nodos y red de interconexión como un sistema diseñado a medida (muy alto rendimiento pero caro); COW aprovecha hardware estándar y resulta más económico pero con menor rendimiento de red."},
+{q:"¿Qué es el 'false sharing' en programación paralela sobre memoria compartida?",
+ opts:["Compartir intencionadamente una variable entre varios threads","Cuando dos threads modifican variables distintas que, por coincidencia, residen en la misma línea de caché, provocando invalidaciones de caché innecesarias y pérdida de rendimiento","Un error de sincronización que da lugar a resultados numéricamente incorrectos","Compartir código fuente entre dos proyectos distintos"], correct:1,
+ exp:"Aunque las variables sean lógicamente independientes, al compartir línea de caché (normalmente 64 bytes) cada escritura de un thread invalida la copia en caché de otro, degradando el rendimiento."},
+{q:"Una técnica habitual para evitar el false sharing consiste en:",
+ opts:["Usar más threads de los necesarios","Añadir 'padding' (relleno) a las estructuras de datos para que variables usadas por distintos threads no compartan la misma línea de caché","Reducir artificialmente la precisión de los datos","Forzar que todos los threads usen solo memoria global sin copias privadas"], correct:1,
+ exp:"Separar físicamente en memoria las variables usadas por threads distintos (padding hasta ocupar líneas de caché diferentes) elimina las invalidaciones cruzadas."},
+{q:"¿Cuál de las siguientes redes de interconexión ofrece habitualmente menor latencia y mayor ancho de banda, siendo típica en supercomputación/HPC?",
+ opts:["Ethernet 1GbE doméstica","InfiniBand","USB 3.0","Bluetooth"], correct:1,
+ exp:"InfiniBand (HDR/NDR) está diseñada específicamente para HPC, con latencias de microsegundos o menos y anchos de banda muy superiores a Ethernet convencional."},
+{q:"RDMA (Remote Direct Memory Access) permite:",
+ opts:["Acceder a la memoria de otro nodo de la red directamente, sin involucrar a la CPU remota, reduciendo drásticamente la latencia de las comunicaciones","Ampliar físicamente la cantidad de RAM instalada en un nodo","Es una técnica exclusiva del hardware de GPU","Sustituye obligatoriamente a todo el stack TCP/IP en cualquier red"], correct:0,
+ exp:"RDMA permite que un nodo lea/escriba en la memoria de otro nodo sin que su CPU tenga que procesar la petición, reduciendo overhead y latencia — clave en InfiniBand/RoCE."},
+{q:"En la comunicación por sockets TCP, ¿cuál es la secuencia típica de llamadas en el lado del SERVIDOR?",
+ opts:["connect() → send() → recv()","socket() → bind() → listen() → accept()","socket() → connect() → listen()","bind() → socket() → accept()"], correct:1,
+ exp:"El servidor crea el socket, lo asocia a una dirección/puerto (bind), se pone a escuchar conexiones entrantes (listen) y acepta cada conexión (accept). El cliente en cambio usa connect()."},
+{q:"La programación híbrida MPI + OpenMP combina típicamente:",
+ opts:["Paso de mensajes ENTRE nodos (MPI) con paralelismo de memoria compartida DENTRO de cada nodo (OpenMP)","Dos implementaciones distintas de MPI ejecutándose a la vez","OpenMP entre nodos y MPI dentro de un mismo nodo","Son modelos incompatibles que nunca se combinan"], correct:0,
+ exp:"El modelo híbrido reparte el trabajo entre nodos con MPI y, dentro de cada nodo (memoria compartida), aprovecha varios núcleos con OpenMP, reduciendo el número de procesos MPI y la sobrecarga de comunicación."},
+{q:"En CUDA, la jerarquía de ejecución de un kernel se organiza, de mayor a menor granularidad, como:",
+ opts:["Warp > Grid > Bloque","Grid > Bloque > Thread","Thread > Bloque > Grid","Kernel > Warp > Grid"], correct:1,
+ exp:"Un kernel lanza un Grid, que se divide en Bloques, y cada Bloque contiene Threads (hasta 1024 threads por bloque típicamente)."},
+{q:"Un cuello de botella habitual en computación con GPU es:",
+ opts:["La velocidad del teclado del usuario","La transferencia de datos entre CPU y GPU a través del bus PCIe (~16 GB/s), mucho más lenta que el ancho de banda de la memoria interna de la GPU","El tamaño físico del monitor conectado","La velocidad del disco duro, siempre y en todos los casos"], correct:1,
+ exp:"Copiar datos entre la RAM del host y la memoria de la GPU vía PCIe suele ser el cuello de botella, por lo que conviene minimizar transferencias y maximizar el trabajo hecho por cada copia."},
+{q:"La 'escalabilidad' de un sistema paralelo se refiere a:",
+ opts:["La capacidad de mantener (o mejorar) el rendimiento/eficiencia al aumentar el número de procesadores y/o el tamaño del problema","El tamaño físico en metros cuadrados que ocupa el cluster","La cantidad total de RAM instalada en el sistema","El coste económico total del hardware"], correct:0,
+ exp:"Un sistema escalable mantiene buena eficiencia (speedup cercano al ideal) al crecer en número de procesadores (escalabilidad fuerte) o al crecer el problema junto con los recursos (escalabilidad débil)."}
+],
+t2:[
+{q:"¿Cuál es la directiva correcta en C/C++ para crear una región paralela con OpenMP?",
+ opts:["#pragma parallel omp","#pragma omp parallel","!$omp parallel","omp pragma parallel"], correct:1,
+ exp:"La sintaxis en C/C++ es '#pragma omp parallel'. Ojo: en Fortran la directiva equivalente es '!$omp parallel' — algunos apuntes mezclan por error ambas sintaxis, es un truco clásico de examen."},
+{q:"¿Qué función de la API de OpenMP devuelve el número de threads activos dentro de la región paralela actual?",
+ opts:["omp_get_thread_num()","omp_get_num_threads()","omp_set_num_threads()","omp_get_max_threads()"], correct:1,
+ exp:"omp_get_num_threads() devuelve cuántos threads están ejecutando la región paralela en ese momento."},
+{q:"¿Qué función devuelve el identificador (id) del thread actual dentro de una región paralela?",
+ opts:["omp_get_num_threads()","omp_get_thread_num()","omp_thread_id()","omp_get_level()"], correct:1,
+ exp:"omp_get_thread_num() devuelve un entero entre 0 y (num_threads-1) identificando al thread que la invoca."},
+{q:"Si una variable se declara 'private' en una región paralela de OpenMP, al entrar en la región cada thread:",
+ opts:["Comparte la misma copia de la variable con todos los demás threads","Obtiene su propia copia SIN inicializar: su valor inicial es indeterminado ('basura'), independientemente del valor que tuviera la variable antes de la región","Obtiene una copia inicializada automáticamente con el valor previo a la región","No puede modificar esa variable bajo ninguna circunstancia"], correct:1,
+ exp:"private crea una copia local por thread pero NO la inicializa con el valor exterior; por eso el primer uso de una variable private sin asignarle valor da resultados impredecibles (como en el ejemplo con valores 'basura')."},
+{q:"¿Qué diferencia principal tiene 'firstprivate' respecto a 'private'?",
+ opts:["Ninguna, son exactamente equivalentes","firstprivate inicializa la copia privada de cada thread con el valor que tenía la variable justo ANTES de entrar en la región paralela","firstprivate obliga a que la variable sea compartida entre todos los threads","firstprivate solo puede aplicarse a variables de tipo entero"], correct:1,
+ exp:"A diferencia de private (valor indeterminado al inicio), firstprivate copia el valor previo de la variable en cada copia privada al comenzar la región."},
+{q:"La cláusula reduction(+:suma) en una región paralela sirve para:",
+ opts:["Eliminar la variable 'suma' al finalizar la región","Que cada thread acumule su propio resultado parcial sobre una copia privada de 'suma', y al terminar la región OpenMP combine automáticamente (sumando) todos los parciales en la variable original, evitando condiciones de carrera","Repartir el valor de 'suma' entre threads sin realizar ningún cálculo","Bloquear manualmente el acceso a 'suma' usando locks explícitos del programador"], correct:1,
+ exp:"reduction gestiona automáticamente la combinación segura de resultados parciales (suma, producto, máximo, etc.), evitando que el programador tenga que usar critical/atomic manualmente."},
+{q:"En el clásico ejemplo de una variable compartida 'X' incrementada simultáneamente por varios threads SIN ninguna protección, el resultado observado suele ser:",
+ opts:["Siempre el valor correcto esperado matemáticamente","Un valor incorrecto e impredecible (normalmente menor al esperado) debido a una condición de carrera (race condition) al no sincronizar los accesos de lectura-modificación-escritura","Un error de compilación inmediato","El programa se bloquea (deadlock) siempre"], correct:1,
+ exp:"Sin sincronización, varios threads pueden leer el mismo valor de X antes de que otro lo actualice, perdiendo incrementos — es el ejemplo típico de race condition sobre una variable shared."},
+{q:"¿Qué efecto tiene la cláusula default(none) en #pragma omp parallel?",
+ opts:["Hace que todas las variables usadas dentro de la región sean privadas automáticamente","Hace que todas las variables usadas dentro de la región sean compartidas automáticamente","Obliga al programador a especificar explícitamente (shared, private, etc.) la categoría de cada variable usada en la región, sin asignar ninguna categoría por defecto — ayuda a evitar errores de scoping","Desactiva por completo la ejecución en paralelo"], correct:2,
+ exp:"default(none) es una buena práctica defensiva: si el programador olvida clasificar alguna variable, el compilador lanza un error en vez de asumir un comportamiento por defecto potencialmente incorrecto."},
+{q:"La cláusula/directiva 'threadprivate' se utiliza para:",
+ opts:["Variables puramente locales dentro de una función","Dar a una variable GLOBAL (o estática) una copia persistente y privada por cada thread, que se mantiene incluso entre distintas regiones paralelas sucesivas","Garantizar que una variable sea siempre compartida entre todos los threads","Es exactamente sinónimo de 'private'"], correct:1,
+ exp:"threadprivate aplica a variables globales/estáticas y, a diferencia de private (que solo dura dentro de una región), su copia por thread persiste entre varias regiones paralelas distintas."},
+{q:"La cláusula 'copyin' se utiliza típicamente junto con variables threadprivate para:",
+ opts:["Eliminar el valor de la variable al entrar en la región","Inicializar la copia privada de cada thread (de una variable threadprivate) con el valor que tiene esa variable en el thread maestro justo al entrar en la región paralela","Copiar un array completo entre dos funciones distintas","No tiene ninguna relación con threadprivate"], correct:1,
+ exp:"copyin resuelve el problema de que las copias threadprivate normalmente no se inicializan: con copyin, todas arrancan con el valor que tenía la variable en el thread maestro."},
+{q:"La cláusula if(condición) añadida a #pragma omp parallel permite:",
+ opts:["Ejecutar la región en paralelo solo si la condición es verdadera; si es falsa, se ejecuta en serie (secuencial, con un único thread)","Ejecutar siempre en paralelo sin importar la condición","Cambiar dinámicamente el número de threads según la condición","Es solo documentación, no tiene ningún efecto real en ejecución"], correct:0,
+ exp:"Es muy usada para evitar el overhead de crear threads cuando el tamaño del problema es pequeño: si la condición es falsa, el bloque se ejecuta en serie."},
+{q:"La cláusula num_threads(4) en una directiva #pragma omp parallel:",
+ opts:["Limita permanentemente el número de núcleos físicos disponibles en la máquina","Especifica que ESA región paralela concreta se ejecute usando (hasta) 4 threads, independientemente del número de threads por defecto configurado","Garantiza automáticamente que el trabajo se dividirá en exactamente 4 partes perfectamente iguales","Es ignorada silenciosamente por el compilador si hay otras directivas"], correct:1,
+ exp:"num_threads fija el número de threads para esa región concreta, sobreescribiendo el valor por defecto (p. ej. el definido por OMP_NUM_THREADS), pero no garantiza por sí sola un reparto equilibrado del trabajo."},
+{q:"En un reparto manual del trabajo usando omp_get_thread_num() junto con un 'if' para decidir qué threads ejecutan cierto bloque, si varios threads NO cumplen la condición de reparto, ¿qué les ocurre?",
+ opts:["El programa falla con un error en tiempo de ejecución","Simplemente no ejecutan ese bloque de trabajo y permanecen inactivos en esa sección, mientras los demás sí lo ejecutan","Se bloquean indefinidamente esperando a los demás threads","Pasan automáticamente a convertirse en el thread maestro"], correct:1,
+ exp:"Es un reparto manual basado en condiciones sobre el id del thread; los threads cuyo id no cumple la condición simplemente se saltan ese bloque de código, sin error ni bloqueo."},
+{q:"¿Por qué es problemático que, por error de diseño, cada thread ejecute una copia COMPLETA de un bucle en vez de solo una fracción del mismo (reparto 'naive' o incorrecto)?",
+ opts:["Es la forma correcta y más eficiente de paralelizar cualquier bucle","No existe reparto real de carga de trabajo: cada thread repite TODO el trabajo del bucle en lugar de solo una fracción, multiplicando el coste computacional total por el número de threads sin ninguna ganancia de rendimiento (e incluso perdiendo tiempo)","Provoca siempre un error de compilación","Simplemente consume algo más de memoria, sin otro efecto relevante"], correct:1,
+ exp:"Sin dividir correctamente el rango de iteraciones entre threads (p. ej. usando el id de thread para calcular un sub-rango), el paralelismo no aporta speedup: se desperdicia cómputo repitiendo el trabajo N veces en vez de dividirlo entre N threads."},
+{q:"Para evitar que varios threads escriban simultáneamente sobre una variable compartida sin usar 'reduction', una alternativa válida en OpenMP es:",
+ opts:["Ignorar el problema, en la práctica casi nunca afecta al resultado","Usar una región crítica (#pragma omp critical) o una operación atómica (#pragma omp atomic) para proteger el acceso concurrente a esa variable","Declarar la variable como 'const' para que no se pueda modificar","Usar printf() repetidamente para forzar la sincronización entre threads"], correct:1,
+ exp:"critical y atomic son los mecanismos estándar de OpenMP para serializar el acceso a una sección de código o a una operación concreta sobre una variable compartida, evitando condiciones de carrera."}
+],
+t2b:[
+{q:"¿Qué directiva se usa para repartir las iteraciones de un bucle for entre los threads de una región paralela?",
+ opts:["#pragma omp sections","#pragma omp for","#pragma omp single","#pragma omp critical"], correct:1,
+ exp:"#pragma omp for reparte el rango de iteraciones del bucle inmediatamente siguiente entre los threads de la región paralela, siempre que el número de iteraciones sea conocido de antemano."},
+{q:"Al usar #pragma omp for sobre un bucle 'for (i=0; i<N; i++)', la variable índice 'i':",
+ opts:["Debe declararse manualmente como private para funcionar correctamente","Es automáticamente privada para cada thread, sin necesidad de declararla explícitamente","Es siempre compartida (shared) entre todos los threads","Provoca un error de compilación si no se declara shared"], correct:1,
+ exp:"OpenMP privatiza automáticamente la variable de control del bucle repartido con #pragma omp for; no hace falta incluirla en una cláusula private."},
+{q:"¿Qué ocurre, por defecto, al final de un bloque #pragma omp for?",
+ opts:["Los threads continúan inmediatamente su ejecución sin esperar a los demás","Existe una barrera de sincronización implícita: el thread máster retoma la ejecución cuando todos los threads han terminado sus iteraciones","Solo el thread 0 espera a que terminen los demás","Todos los threads se destruyen automáticamente"], correct:1,
+ exp:"Como casi todas las directivas de reparto de trabajo en OpenMP, #pragma omp for termina con una barrera implícita de sincronización de todos los threads (salvo que se use nowait)."},
+{q:"Cuando una región paralela contiene únicamente un bucle for, ¿qué directiva combinada puede usarse en su lugar?",
+ opts:["#pragma omp sections for","#pragma omp parallel for","#pragma omp single for","#pragma omp for parallel"], correct:1,
+ exp:"#pragma omp parallel for combina en una sola directiva la creación de la región paralela y el reparto del bucle, cuando este es el único contenido de la región."},
+{q:"La directiva #pragma omp sections permite:",
+ opts:["Repartir las iteraciones de un bucle entre los threads","Repartir distintos bloques de código (funciones o tareas independientes) entre los threads, usando paralelismo de función (function decomposition)","Ejecutar un bloque de código por un único thread","Sincronizar el acceso a una variable compartida mediante un lock"], correct:1,
+ exp:"sections reparte 'trozos' de código independiente (cada uno delimitado por #pragma omp section) entre los threads disponibles, a diferencia de for que reparte iteraciones de un mismo bucle."},
+{q:"Dentro de un bloque #pragma omp sections, cada #pragma omp section:",
+ opts:["Es ejecutada simultáneamente por todos los threads de la región","Es ejecutada por un único thread; cada thread ejecuta ninguna, una o varias secciones, pero una misma sección nunca la ejecutan dos threads a la vez","Debe ejecutarse siempre en el thread máster (thread 0)","Requiere que el número de threads sea exactamente igual al número de secciones"], correct:1,
+ exp:"Cada section se asigna a un solo thread; si hay más threads que secciones, algunos quedarán sin trabajo, y si hay menos, algún thread ejecutará más de una sección."},
+{q:"La directiva #pragma omp single se usa para:",
+ opts:["Repartir un bucle entre varios threads de forma equilibrada","Definir un bloque de código que debe ser ejecutado por un único thread (sin especificar cuál), típico para una operación de E/S o una inicialización","Crear una barrera explícita sin ejecutar ningún código","Declarar variables privadas de forma global para todo el programa"], correct:1,
+ exp:"single garantiza que ese bloque solo lo ejecuta un thread (cualquiera de ellos, no se especifica cuál), evitando que se repita innecesariamente en todos."},
+{q:"La cláusula copyprivate(X) asociada a #pragma omp single sirve para:",
+ opts:["Hacer que X sea privada en todos los threads excepto en el que ejecuta el bloque single","Difundir (broadcast) al resto de threads el valor privado de X calculado por el thread que ejecutó el bloque single, justo al finalizar dicho bloque","Eliminar la barrera implícita del bloque single","Convertir la variable X en una variable global persistente entre ejecuciones"], correct:1,
+ exp:"copyprivate propaga el valor de una variable privada calculada dentro del bloque single a las copias privadas de esa variable en el resto de threads."},
+{q:"La cláusula schedule(static, k) en #pragma omp for reparte las iteraciones del bucle:",
+ opts:["De forma dinámica y bajo demanda, en trozos de tamaño k","De forma estática: en trozos de tamaño fijo k, asignados de antemano de forma entrelazada (round-robin) entre los threads","De tamaño decreciente de forma progresiva","Siempre en un único trozo por thread, sin excepción"], correct:1,
+ exp:"static reparte en tiempo de compilación/antes de ejecutar el bucle, en bloques de tamaño k asignados de forma entrelazada a los distintos threads."},
+{q:"Si en schedule(static, k) no se especifica el tamaño de trozo k, ¿cómo se reparten por defecto las iteraciones?",
+ opts:["En un único trozo para todos los threads juntos","En trozos de tamaño aproximado N/P (N iteraciones entre P threads), asignados de forma entrelazada","Se produce siempre un error de compilación","En trozos de tamaño fijo 1, independientemente de N y P"], correct:1,
+ exp:"Sin tamaño de trozo explícito, static reparte las N iteraciones en P trozos de tamaño aproximado N/P, uno por thread, de forma entrelazada (round robin)."},
+{q:"La cláusula schedule(dynamic, k) se diferencia de schedule(static, k) en que:",
+ opts:["Los trozos se asignan de antemano y de forma fija antes de empezar el bucle","Los trozos (de tamaño k) se asignan dinámicamente, bajo demanda, al primer thread que queda libre, mejorando el balanceo cuando las iteraciones tienen cargas de trabajo desiguales","dynamic solo puede usarse con un único thread activo","Son exactamente equivalentes, no existe ninguna diferencia real"], correct:1,
+ exp:"Con dynamic, cada thread pide un nuevo trozo de tamaño k según va terminando el anterior, lo que ayuda a equilibrar la carga cuando el coste de las iteraciones no es uniforme (el tamaño por defecto si no se indica k es 1)."},
+{q:"En la planificación schedule(guided, k), el tamaño de los trozos sucesivos asignados a los threads:",
+ opts:["Se mantiene siempre constante e igual a k durante todo el bucle","Va decreciendo progresivamente en cada asignación (tamaño proporcional a las iteraciones restantes entre los threads), siendo k aproximadamente el tamaño mínimo/último trozo","Aumenta progresivamente con cada nuevo trozo asignado","Es completamente independiente del número de threads P"], correct:1,
+ exp:"guided empieza con trozos grandes y los va reduciendo (aproximadamente según K_i+1 = K_i·(1-1/P)) a medida que quedan menos iteraciones, con tamaño mínimo k (por defecto 1)."},
+{q:"La cláusula nowait aplicada a una directiva for, sections o single:",
+ opts:["Añade una barrera adicional al principio del bloque","Elimina la barrera de sincronización implícita al final de ese bloque, permitiendo que cada thread continúe su ejecución sin esperar a que los demás terminen","Obliga a que el bloque lo ejecute un único thread","Hace que el bloque se ejecute de forma puramente secuencial, sin paralelismo"], correct:1,
+ exp:"Por defecto casi todas las directivas de reparto de trabajo terminan con una barrera; nowait la suprime quitando esa sincronización final, útil cuando no es necesario esperar a todos los threads antes de continuar."},
+{q:"Respecto al anidamiento de regiones paralelas en OpenMP (una región #pragma omp parallel dentro de otra), ¿cuál de las siguientes afirmaciones es correcta?",
+ opts:["OpenMP no permite anidar regiones paralelas bajo ninguna circunstancia","Se pueden anidar regiones paralelas con cualquier nivel de profundidad, y la función omp_set_num_threads() puede invocarse dentro de una región paralela para controlar el grado de paralelismo del siguiente nivel anidado","El anidamiento de regiones paralelas solo está permitido en Fortran, nunca en C","Anidar una región paralela dentro de otra produce siempre un error en tiempo de ejecución"], correct:1,
+ exp:"OpenMP permite anidamiento con cualquier profundidad, y desde OpenMP 3.0 se puede controlar el grado de cada nivel invocando omp_set_num_threads() dentro de la propia región paralela."},
+{q:"¿Qué función de la API de OpenMP permite conocer el nivel de anidamiento (profundidad) de regiones paralelas en el punto actual de ejecución?",
+ opts:["omp_get_thread_num()","omp_get_level()","omp_get_num_threads()","omp_set_num_threads()"], correct:1,
+ exp:"omp_get_level() devuelve el número de regiones paralelas anidadas que envuelven el punto de ejecución actual (omp_get_active_level() hace lo mismo mas solo contando niveles activos con más de un thread)."},
+{q:"¿Qué variable de entorno permite limitar el número máximo de niveles de anidamiento paralelo ACTIVOS en un programa OpenMP?",
+ opts:["OMP_NUM_THREADS","OMP_MAX_ACTIVE_LEVELS","OMP_THREAD_LIMIT","OMP_SCHEDULE"], correct:1,
+ exp:"OMP_MAX_ACTIVE_LEVELS (y la función omp_set_max_active_levels()) limitan cuántos niveles de anidamiento paralelo pueden estar activos simultáneamente; OMP_THREAD_LIMIT en cambio limita el número total de threads del programa."}
+],
+t3:[
+{q:"¿Qué dos mecanismos principales de sincronización ofrece OpenMP cuando no se pueden eliminar las dependencias de datos entre threads?",
+ opts:["Paso de mensajes y sockets","Exclusión mutua y sincronización por eventos","Paralelismo de datos y de tareas","Caché y memoria virtual"], correct:1,
+ exp:"Los apuntes señalan la exclusión mutua (critical/atomic/locks) y la sincronización por eventos (p. ej. barrier) como los dos mecanismos básicos cuando las dependencias entre threads no se pueden eliminar."},
+{q:"Respecto a un bloque #pragma omp critical SIN nombre (sin variable de lock asociada), ¿qué comportamiento tiene?",
+ opts:["Cada bloque critical sin nombre es completamente independiente de los demás","Define una única sección crítica compartida por TODO el programa: todos los bloques critical sin nombre se excluyen mutuamente entre sí, aunque protejan datos totalmente distintos","Permite la ejecución simultánea de varios threads dentro de él","Elimina la necesidad de declarar variables compartidas"], correct:1,
+ exp:"Al no usar variables de lock, un critical sin nombre define UNA única sección crítica global para todo el programa: dos bloques critical distintos en el código se bloquean mutuamente entre sí, aunque protejan variables no relacionadas."},
+{q:"Según la recomendación señalada en los apuntes, el tamaño de una sección crítica (critical) debe ser:",
+ opts:["Lo mayor posible, para minimizar el número de secciones críticas del programa","Lo menor posible, ya que serializa la ejecución de los threads que entran en ella y limita el grado de paralelismo real","Siempre igual al tamaño completo de la región paralela","Indiferente, no afecta en absoluto al rendimiento"], correct:1,
+ exp:"Cuanto más código incluya la sección crítica, más tiempo pasan los threads esperando turno de forma serializada, así que debe reducirse al mínimo imprescindible."},
+{q:"En el patrón típico de cálculo de un máximo en paralelo, cada thread acumula un máximo parcial en una copia privada 'MAXL' (declarada firstprivate) dentro de un #pragma omp for, y después la compara con la variable global 'MAX' dentro de un bloque #pragma omp critical. ¿Por qué es necesario proteger esa comparación final con critical?",
+ opts:["Porque MAXL es compartida y puede generar una condición de carrera","Porque, aunque MAXL es privada de cada thread, la variable MAX SÍ es compartida: sin protección, varios threads podrían leerla y escribirla simultáneamente, perdiendo actualizaciones (condición de carrera)","Porque el bucle for ya está protegido y hace falta sincronización redundante por norma","Porque sin critical el programa directamente no compilaría"], correct:1,
+ exp:"MAXL privada evita conflictos durante el cálculo parcial de cada thread; pero la fusión final en la variable MAX compartida sí necesita exclusión mutua, de ahí el critical."},
+{q:"La directiva #pragma omp atomic se describe como:",
+ opts:["Un sustituto completo de cualquier sección crítica, por compleja que sea","Un caso particular de sección crítica, limitado a proteger una única operación simple (p. ej. X = X + 1), y más eficiente que un critical completo para ese tipo de operación","Una forma de eliminar por completo la necesidad de cualquier sincronización","Una directiva exclusiva para operaciones de entrada/salida"], correct:1,
+ exp:"atomic protege solo una operación atómica simple sobre una variable (una actualización tipo X = X op expr), y resulta más eficiente que critical precisamente por estar limitado a ese caso simple."},
+{q:"¿Cuál es el tipo de dato predefinido en C que debe usarse para declarar una variable de lock en OpenMP?",
+ opts:["omp_mutex_t","omp_lock_t","pthread_mutex_t","omp_sync_t"], correct:1,
+ exp:"Las variables de lock en OpenMP (C) se declaran con el tipo predefinido omp_lock_t, por ejemplo: omp_lock_t C;"},
+{q:"¿Qué función de OpenMP inicializa (reserva memoria para) una variable de lock?",
+ opts:["omp_set_lock(&C);","omp_init_lock(&C);","omp_create_lock(&C);","omp_new_lock(&C);"], correct:1,
+ exp:"omp_init_lock(&C) reserva memoria e inicializa la variable de lock antes de poder usarla con set/unset/test."},
+{q:"¿Qué diferencia hay entre omp_set_lock(&C) y omp_test_lock(&C)?",
+ opts:["Son exactamente la misma función con dos nombres distintos","omp_set_lock() toma el lock esperando (bloqueante) si está ocupado, mientras que omp_test_lock() comprueba el estado del lock sin bloquear y devuelve un valor booleano indicando si se pudo tomar","omp_test_lock() siempre bloquea el programa hasta que el lock quede libre","omp_set_lock() solo puede invocarse una única vez en todo el programa"], correct:1,
+ exp:"omp_set_lock() es bloqueante (espera a que el lock esté libre); omp_test_lock() es no bloqueante y devuelve inmediatamente True/False según haya podido tomar el lock o no."},
+{q:"¿Qué función libera (desbloquea) una variable de lock previamente tomada en OpenMP?",
+ opts:["omp_destroy_lock(&C);","omp_unset_lock(&C);","omp_free_lock(&C);","omp_release_lock(&C);"], correct:1,
+ exp:"omp_unset_lock(&C) libera el lock para que otro thread pueda tomarlo. omp_destroy_lock(&C), en cambio, libera la memoria asociada a la variable de lock cuando ya no se va a usar más."},
+{q:"Una ventaja destacada de usar variables de lock frente a critical es:",
+ opts:["Los locks no pueden usarse dentro de funciones","Los locks ofrecen mayor flexibilidad: la variable de lock puede pasarse como parámetro a una rutina, permitiendo secciones críticas 'ad hoc' más controladas que un critical genérico","Los locks eliminan por completo cualquier posibilidad de deadlock","Los locks son siempre más lentos que critical en cualquier caso de uso"], correct:1,
+ exp:"A diferencia de critical (sin nombre, una sola sección crítica global), las variables de lock permiten definir secciones críticas específicas y pasarlas como parámetro entre funciones, dando más control y flexibilidad."},
+{q:"La directiva #pragma omp barrier sirve para:",
+ opts:["Eliminar todas las barreras implícitas del resto del programa","Definir una barrera de sincronización global EXPLÍCITA que obliga a todos los threads de la región paralela a esperarse en ese punto antes de continuar","Declarar una variable compartida de tipo barrera","Finalizar inmediatamente la región paralela"], correct:1,
+ exp:"#pragma omp barrier es la barrera explícita típica de sincronización global de todos los threads de la región paralela en ese punto del código."},
+{q:"En un fragmento con #pragma omp for seguido de #pragma omp for nowait, ¿qué diferencia hay en la sincronización al final de cada bucle?",
+ opts:["Ambos llevan barrera implícita por igual al terminar","El primer for (sin nowait) SÍ lleva barrera implícita al final; el segundo for (con nowait) NO la lleva, por lo que los threads continúan sin esperarse entre sí tras ese bucle","Ninguno de los dos lleva barrera, porque nowait es el comportamiento por defecto en OpenMP","Solo el segundo for lleva barrera; el primero nunca la lleva"], correct:1,
+ exp:"Por defecto #pragma omp for termina con una barrera implícita; añadir nowait elimina esa barrera concreta, dejando que cada thread siga adelante sin esperar a los demás en ese punto."},
+{q:"¿Cuál de las siguientes es un ejemplo típico de causa de DEADLOCK señalado en los apuntes al usar varios locks?",
+ opts:["Olvidar declarar una variable como private en una cláusula","Que dos partes del código tomen dos locks distintos (p. ej. C1 y C2) en ORDEN INVERSO entre sí (una los toma C1→C2 y la otra C2→C1), de modo que cada una puede quedar esperando indefinidamente a que la otra libere el lock que necesita (espera circular)","Usar demasiados threads simultáneamente en la región paralela","Usar la cláusula reduction dentro de un bucle for"], correct:1,
+ exp:"Es el clásico problema de 'lock ordering': si distintas secciones adquieren los mismos locks en órdenes opuestos, puede darse una espera circular (deadlock) si cada una retiene su primer lock mientras espera el segundo."},
+{q:"Otro error típico que puede provocar deadlock, señalado en los apuntes, es:",
+ opts:["Usar #pragma omp critical en vez de atomic","Olvidar llamar a omp_unset_lock() en TODOS los caminos posibles del código (p. ej. liberar el lock solo dentro de un 'if' pero no en su 'else'), dejando el lock tomado indefinidamente","Declarar demasiadas variables como shared","Usar la función omp_get_wtime() dentro de una región paralela"], correct:1,
+ exp:"Si un camino de ejecución (p. ej. una rama else) no libera un lock que sí se tomó antes, cualquier otro thread que lo necesite se quedará esperando para siempre."},
+{q:"¿Qué función de OpenMP se utiliza para medir tiempos de ejecución (tiempo de reloj, wall-clock)?",
+ opts:["omp_get_thread_num();","omp_get_wtime();","omp_get_time();","clock_omp();"], correct:1,
+ exp:"omp_get_wtime() devuelve el tiempo de reloj actual; tomando la diferencia entre dos llamadas se mide el tiempo transcurrido de ejecución."},
+{q:"¿Qué devuelve la función omp_get_wtick()?",
+ opts:["El número de threads activos en ese momento","La precisión (resolución) del reloj usado por omp_get_wtime()","El tiempo total transcurrido desde el inicio del programa","El identificador del thread actual"], correct:1,
+ exp:"omp_get_wtick() indica la precisión del temporizador, es decir, el intervalo mínimo medible entre dos llamadas a omp_get_wtime()."},
+{q:"Según los apuntes, ¿qué es una 'carrera' (race) en el contexto de programación paralela con memoria compartida?",
+ opts:["Una técnica de optimización del rendimiento del código","La obtención de resultados inesperados e irreproducibles debido a problemas en el acceso y la sincronización de variables compartidas, de modo que el resultado final depende del orden de ejecución de los threads","Un tipo de bucle paralelo especialmente rápido de ejecutar","Un sinónimo exacto de 'barrera de sincronización'"], correct:1,
+ exp:"Una condición de carrera (race) ocurre cuando el resultado final depende del orden (no determinista) en que los threads acceden a variables compartidas sin la sincronización adecuada."},
+{q:"Entre las recomendaciones generales señaladas en los apuntes para programar correctamente con OpenMP se incluye:",
+ opts:["Evitar siempre declarar cualquier variable como private","Prestar atención al ámbito de las variables (shared/private, etc.), usar con cuidado las funciones de sincronización, y disponer de una versión secuencial equivalente con la que comparar resultados","No usar nunca secciones críticas bajo ninguna circunstancia","Convertir siempre todas las variables del programa en globales"], correct:1,
+ exp:"Los apuntes insisten en controlar bien el ámbito de las variables, usar la sincronización con cuidado, y mantener una versión secuencial de referencia para validar que los resultados paralelos son correctos."},
+{q:"El objetivo de paralelizar una aplicación, en términos de 'speed-up', es, según los apuntes:",
+ opts:["Reducir siempre el consumo de memoria, nunca el tiempo de ejecución","Ejecutar el mismo problema en menos tiempo, o resolver un problema de mayor tamaño en el mismo tiempo, teniendo siempre en cuenta el overhead añadido por la propia paralelización","Minimizar en todo momento el número de threads usados","Evitar el uso de cualquier tipo de sincronización"], correct:1,
+ exp:"El objetivo es acelerar la resolución del mismo problema o abordar problemas mayores en el mismo tiempo, pero siempre contando con el overhead (creación de threads, sincronización, etc.) que introduce paralelizar."},
+{q:"Por defecto, en OpenMP el anidamiento de regiones paralelas está:",
+ opts:["Habilitado siempre y no se puede desactivar","Deshabilitado por defecto; debe activarse explícitamente, por ejemplo con la llamada omp_set_nested(TRUE) o la variable de entorno OMP_NESTED=TRUE","Disponible solo en la versión 2.0 de OpenMP","Gestionado automáticamente sin ninguna función de control posible"], correct:1,
+ exp:"El anidamiento de regiones paralelas está deshabilitado por defecto; hay que activarlo explícitamente mediante omp_set_nested(TRUE) o la variable de entorno OMP_NESTED=TRUE antes de que las regiones anidadas se ejecuten realmente en paralelo."},
+{q:"¿Qué función permite consultar si el anidamiento de regiones paralelas está actualmente activado?",
+ opts:["omp_get_level();","omp_get_nested();","omp_get_active_level();","omp_get_thread_limit();"], correct:1,
+ exp:"omp_get_nested() devuelve si el anidamiento está activado (true) o no (false) en ese momento."}
+]
+};
+
+let state = {};
+TOPICS.filter(t=>t.id!=="resumen").forEach(t=>{
+  state[t.id] = QUESTIONS[t.id].map(()=>({answered:false, correct:false}));
+});
+let activeTab = "t0";
+
+function pct(topicId){
+  const arr = state[topicId];
+  const answered = arr.filter(a=>a.answered).length;
+  return {answered, total:arr.length, correct:arr.filter(a=>a.correct).length};
+}
+
+function renderTabs(){
+  const tabsEl = document.getElementById("tabs");
+  tabsEl.innerHTML = "";
+  TOPICS.forEach(t=>{
+    const btn = document.createElement("button");
+    btn.className = "tab-btn" + (t.id===activeTab ? " active":"");
+    if(t.id==="resumen"){
+      btn.textContent = t.name;
+    } else {
+      const p = pct(t.id);
+      btn.innerHTML = t.name + ` <span class="pct">${p.answered}/${p.total}</span>`;
+    }
+    btn.onclick = ()=>{ activeTab = t.id; render(); };
+    tabsEl.appendChild(btn);
+  });
+}
+
+function renderQuestionCard(topicId, qIndex){
+  const q = QUESTIONS[topicId][qIndex];
+  const st = state[topicId][qIndex];
+  const card = document.createElement("div");
+  card.className = "q-card";
+
+  const num = document.createElement("div");
+  num.className = "q-num";
+  num.textContent = "Pregunta " + (qIndex+1) + " de " + QUESTIONS[topicId].length;
+  card.appendChild(num);
+
+  const qt = document.createElement("div");
+  qt.className = "q-text";
+  qt.textContent = q.q;
+  card.appendChild(qt);
+
+  const optsWrap = document.createElement("div");
+  optsWrap.className = "options";
+
+  q.opts.forEach((optText, i)=>{
+    const b = document.createElement("button");
+    b.className = "opt-btn";
+    b.textContent = optText;
+    if(st.answered){
+      b.disabled = true;
+      if(i === q.correct) b.classList.add("correct");
+      else if(i === st.chosen) b.classList.add("wrong");
+      else b.classList.add("dim");
+    }
+    b.onclick = ()=>{
+      if(st.answered) return;
+      st.answered = true;
+      st.chosen = i;
+      st.correct = (i === q.correct);
+      render();
+    };
+    optsWrap.appendChild(b);
+  });
+  card.appendChild(optsWrap);
+
+  const fb = document.createElement("div");
+  fb.className = "feedback " + (st.answered ? (st.correct ? "ok show":"ko show") : "");
+  if(st.answered){
+    fb.innerHTML = "<b>" + (st.correct ? "✔ Correcto" : "✘ Incorrecto") + "</b><span class='exp'>" + q.exp + "</span>";
+  }
+  card.appendChild(fb);
+
+  return card;
+}
+
+function renderTopicPanel(topicId){
+  const panel = document.createElement("div");
+  panel.className = "panel active";
+
+  const p = pct(topicId);
+  const bar = document.createElement("div");
+  bar.className = "stats-bar";
+  bar.innerHTML = `<span class="label">Progreso</span>
+    <div class="progress-track"><div class="progress-fill" style="width:${(p.answered/p.total*100)}%"></div></div>
+    <span class="score">${p.correct}/${p.answered||0}${p.answered? " aciertos":""}</span>`;
+  panel.appendChild(bar);
+
+  QUESTIONS[topicId].forEach((q,i)=>{
+    panel.appendChild(renderQuestionCard(topicId, i));
+  });
+
+  return panel;
+}
+
+function renderSummaryPanel(){
+  const panel = document.createElement("div");
+  panel.className = "panel active";
+
+  const card = document.createElement("div");
+  card.className = "summary-card";
+  card.innerHTML = "<h2>Resumen de resultados</h2>";
+
+  let totalQ=0, totalC=0, totalA=0;
+  TOPICS.filter(t=>t.id!=="resumen").forEach(t=>{
+    const p = pct(t.id);
+    totalQ += p.total; totalC += p.correct; totalA += p.answered;
+    const row = document.createElement("div");
+    row.className = "summary-row";
+    row.innerHTML = `<span>${t.name}</span><span class="big">${p.correct}/${p.total} ${p.answered<p.total ? `<span class="badge">${p.total-p.answered} sin responder</span>`:""}</span>`;
+    card.appendChild(row);
+  });
+  const rowTotal = document.createElement("div");
+  rowTotal.className = "summary-row";
+  rowTotal.innerHTML = `<span><strong>Total</strong></span><span class="big">${totalC}/${totalQ}</span>`;
+  card.appendChild(rowTotal);
+
+  const resetBtn = document.createElement("button");
+  resetBtn.className = "reset-btn";
+  resetBtn.textContent = "Reiniciar test";
+  resetBtn.onclick = ()=>{
+    TOPICS.filter(t=>t.id!=="resumen").forEach(t=>{
+      state[t.id] = QUESTIONS[t.id].map(()=>({answered:false, correct:false}));
+    });
+    activeTab = "t0";
+    render();
+  };
+  card.appendChild(resetBtn);
+
+  panel.appendChild(card);
+  return panel;
+}
+
+function render(){
+  renderTabs();
+  const main = document.getElementById("main");
+  main.innerHTML = "";
+  if(activeTab === "resumen"){
+    main.appendChild(renderSummaryPanel());
+  } else {
+    main.appendChild(renderTopicPanel(activeTab));
+  }
+}
+
+render();
+})();
+</script>
+
+</body>
+</html>
