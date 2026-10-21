@@ -310,6 +310,38 @@ main{padding-top:18px;}
   color:var(--text-dim);
   margin-left:6px;
 }
+.gate-divider{
+  display:flex;
+  align-items:center;
+  gap:10px;
+  margin:16px 0 14px 0;
+  color:var(--text-dim);
+  font-size:0.78rem;
+}
+.gate-divider::before,
+.gate-divider::after{
+  content:"";
+  flex:1;
+  height:1px;
+  background:var(--border);
+}
+.gate-google-btn{
+  width:100%;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  gap:10px;
+  padding:10px 12px;
+  border-radius:10px;
+  border:1px solid var(--border);
+  background:var(--surface-2);
+  color:var(--text);
+  font-weight:600;
+  font-size:0.88rem;
+  cursor:pointer;
+}
+.gate-google-btn svg{flex:0 0 auto;}
+.gate-google-btn:disabled{opacity:0.6; cursor:default;}
 </style>
 </head>
 <body>
@@ -321,6 +353,17 @@ main{padding-top:18px;}
     <input type="password" id="gate-pass" placeholder="Contraseña" autocomplete="off">
     <button id="gate-btn">Entrar</button>
     <div class="gate-error" id="gate-error">Contraseña incorrecta, inténtalo de nuevo.</div>
+    <div class="gate-divider">o</div>
+    <button id="gate-google-btn" class="gate-google-btn">
+      <svg width="18" height="18" viewBox="0 0 48 48" aria-hidden="true">
+        <path fill="#FFC107" d="M43.611 20.083H42V20H24v8h11.303c-1.649 4.657-6.08 8-11.303 8-6.627 0-12-5.373-12-12s5.373-12 12-12c3.059 0 5.842 1.154 7.961 3.039l5.657-5.657C34.046 6.053 29.268 4 24 4 12.955 4 4 12.955 4 24s8.955 20 20 20 20-8.955 20-20c0-1.341-.138-2.651-.389-3.917z"/>
+        <path fill="#FF3D00" d="M6.306 14.691l6.571 4.819C14.655 15.108 18.961 12 24 12c3.059 0 5.842 1.154 7.961 3.039l5.657-5.657C34.046 6.053 29.268 4 24 4 16.318 4 9.656 8.337 6.306 14.691z"/>
+        <path fill="#4CAF50" d="M24 44c5.166 0 9.86-1.977 13.409-5.192l-6.19-5.238C29.211 35.091 26.715 36 24 36c-5.202 0-9.619-3.317-11.283-7.946l-6.522 5.025C9.505 39.556 16.227 44 24 44z"/>
+        <path fill="#1976D2" d="M43.611 20.083H42V20H24v8h11.303a12.04 12.04 0 0 1-4.087 5.571l.003-.002 6.19 5.238C36.971 39.205 44 34 44 24c0-1.341-.138-2.651-.389-3.917z"/>
+      </svg>
+      <span id="gate-google-label">Iniciar sesión con Google</span>
+    </button>
+    <div class="gate-error" id="gate-google-error">Esta cuenta de Google no tiene acceso al test.</div>
   </div>
 </div>
 
@@ -335,9 +378,32 @@ main{padding-top:18px;}
 </div>
 </div>
 
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
 <script>
 (function(){
   var PASSWORD_HASH = "f1b9c6a8cab94276ef65d488c5e87c23a0a6c96e82f70b2d947737f205b3e62d";
+
+  // Solo estas cuentas de Google pueden entrar con el botón de Google.
+  // La contraseña, en cambio, la puede usar cualquiera que la conozca.
+  var ALLOWED_GOOGLE_EMAILS = ["ucedapablo2001@gmail.com"];
+
+  var firebaseConfig = {
+    apiKey: "AIzaSyDISZ-aB4i3wgFVBrV_yke3vdaFLv5Em88",
+    authDomain: "test-sistemas-distribuidos.firebaseapp.com",
+    projectId: "test-sistemas-distribuidos",
+    storageBucket: "test-sistemas-distribuidos.firebasestorage.app",
+    messagingSenderId: "76401787120",
+    appId: "1:76401787120:web:00454de3ceb7770f964235"
+  };
+
+  var auth = null;
+  try{
+    firebase.initializeApp(firebaseConfig);
+    auth = firebase.auth();
+  }catch(e){
+    console.error("No se pudo inicializar Firebase Auth:", e);
+  }
 
   function bufToHex(buf){
     return Array.prototype.map.call(new Uint8Array(buf), function(b){
@@ -360,6 +426,7 @@ main{padding-top:18px;}
     var val = document.getElementById("gate-pass").value.trim().toLowerCase();
     sha256(val).then(function(hash){
       if(hash === PASSWORD_HASH){
+        document.getElementById("gate-error").style.display = "none";
         unlock();
       } else {
         document.getElementById("gate-error").style.display = "block";
@@ -371,6 +438,42 @@ main{padding-top:18px;}
   document.getElementById("gate-pass").addEventListener("keydown", function(e){
     if(e.key === "Enter") tryUnlock();
   });
+
+  var googleBtn = document.getElementById("gate-google-btn");
+  var googleLabel = document.getElementById("gate-google-label");
+  var googleError = document.getElementById("gate-google-error");
+
+  function trySignInWithGoogle(){
+    if(!auth){
+      googleError.textContent = "El inicio de sesión con Google no está disponible ahora mismo.";
+      googleError.style.display = "block";
+      return;
+    }
+    googleError.style.display = "none";
+    googleBtn.disabled = true;
+    googleLabel.textContent = "Conectando…";
+    var provider = new firebase.auth.GoogleAuthProvider();
+    auth.signInWithPopup(provider).then(function(result){
+      var email = (result.user && result.user.email || "").toLowerCase();
+      var allowed = ALLOWED_GOOGLE_EMAILS.map(function(e){ return e.toLowerCase(); });
+      if(allowed.indexOf(email) !== -1){
+        unlock();
+      } else {
+        googleError.textContent = "Esta cuenta de Google (" + email + ") no tiene acceso al test.";
+        googleError.style.display = "block";
+        auth.signOut();
+      }
+    }).catch(function(err){
+      console.error(err);
+      googleError.textContent = "No se pudo iniciar sesión con Google. Inténtalo de nuevo.";
+      googleError.style.display = "block";
+    }).finally(function(){
+      googleBtn.disabled = false;
+      googleLabel.textContent = "Iniciar sesión con Google";
+    });
+  }
+
+  googleBtn.addEventListener("click", trySignInWithGoogle);
 
   try{
     if(sessionStorage.getItem("sd_quiz_unlocked") === "1"){ unlock(); }
